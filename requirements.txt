@@ -1,0 +1,6 @@
+flask
+jinja2
+webargs
+peewee
+beautifulsoup4
+psycopg2-binary
