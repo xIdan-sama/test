@@ -2,6 +2,9 @@ import json
 
 from peewee import *
 
+from db_model import utils
+
+
 pg_db = PostgresqlDatabase(
     'test',
     user='test_user',
@@ -11,7 +14,7 @@ pg_db = PostgresqlDatabase(
 
 class BaseModel(Model):
     def __str__(self):
-        return json.dumps(self.__data__)
+        return json.dumps(self.__data__, cls=utils.JsonEncoder)
 
     class Meta:
         database = pg_db

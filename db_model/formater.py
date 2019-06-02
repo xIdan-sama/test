@@ -1,16 +1,20 @@
 from datetime import date
 
 
-def stock_prices(company, arg_list: list):
-    if len(arg_list[0]) != 10:
-        row_date = date.today()
-    else:
-        date_list = arg_list[0].split('/')
-        row_date = '{}-{}-{}'.format(date_list[2], date_list[0], date_list[1])
+def date_format(date_str):
+    """ Форматируем дату из формата ММ/ДД/ГГГГ в ГГГГ-ДД-ММ """
+    
+    if len(date_str) != 10:
+        return date.today()
 
+    date_list = date_str.split('/')
+    return '{}-{}-{}'.format(date_list[2], date_list[0], date_list[1])
+
+
+def stock_prices(company, arg_list: list):
     return {
         'company': company,
-        'date': row_date,
+        'date': date_format(arg_list[0]),
         'open': arg_list[1],
         'high': arg_list[2],
         'low': arg_list[3],
@@ -28,15 +32,9 @@ def insiders(company, arg_list: list):
 
 
 def trades(insider, arg_list: list):
-    if len(arg_list[2]) != 10:
-        row_date = date.today()
-    else:
-        date_list = arg_list[2].split('/')
-        row_date = '{}-{}-{}'.format(date_list[2], date_list[0], date_list[1])
-
     return {
         'insider': insider,
-        'date': row_date,
+        'date': date_format(arg_list[2]),
         'type': arg_list[3],
         'owner_type': arg_list[4],
         'traded': arg_list[5].replace(',', ''),

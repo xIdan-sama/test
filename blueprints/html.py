@@ -20,7 +20,7 @@ def ticker_get(ticker):
 
 @bp_html.route("/<ticker>/insider", methods=["GET"])
 def insider_get(ticker):
-    return render_template('insiders.tpl', data=base.ticker_get(ticker), title=ticker)
+    return render_template('insiders.tpl', data=base.insider_get(ticker), title=ticker)
 
 
 @bp_html.route("/<ticker>/insider/<name>", methods=["GET"])

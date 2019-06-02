@@ -7,6 +7,8 @@ import blueprints.base as base
 
 
 def json_wraper(func):
+    """ Обертка приведения результата в json стркутуру """
+
     @wraps(func)
     def wrap(*args, **kwargs):
         response = []
@@ -37,7 +39,7 @@ def ticker_get(ticker):
 @bp_json.route("/<ticker>/insider", methods=["GET"])
 @json_wraper
 def insider_get(ticker):
-    return base.ticker_get(ticker)
+    return base.insider_get(ticker)
 
 
 @bp_json.route("/<ticker>/insider/<name>", methods=["GET"])

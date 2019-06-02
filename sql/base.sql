@@ -66,3 +66,57 @@ COMMENT ON COLUMN public.trades."owner_type" IS 'Тип владения';
 COMMENT ON COLUMN public.trades."traded" IS 'Кол-во акций продажи';
 COMMENT ON COLUMN public.trades."held" IS 'Кол-во акций удержаний';
 COMMENT ON COLUMN public.trades."price" IS 'Цена';
+
+CREATE OR REPLACE FUNCTION public.delta(i_company varchar(150), i_value decimal(14,4), i_column text)
+ RETURNS record
+ LANGUAGE plpgsql
+AS $function$
+declare
+	_stock_price_row stock_prices%rowtype;
+	_min_date date;
+	_tt_response record;
+begin
+	
+	select min(date) into _min_date from stock_prices where company = i_company;
+	select * into _stock_price_row from stock_prices where company = i_company and date = _min_date;
+
+	if i_column = 'low' THEN
+		select _min_date, date
+		into _tt_response
+			from stock_prices
+			where company = i_company and date > _min_date and abs(low - _stock_price_row.low) > i_value
+		order by date
+		limit 1;
+	end if;
+
+	if i_column = 'open' THEN
+		select _min_date, date
+		into _tt_response
+			from stock_prices
+			where company = i_company and date > _min_date and abs(open - _stock_price_row.open) > i_value
+		order by date
+		limit 1;
+	end if;
+
+	if i_column = 'close' THEN
+		select _min_date, date
+		into _tt_response
+			from stock_prices
+			where company = i_company and date > _min_date and abs(close - _stock_price_row.close) > i_value
+		order by date
+		limit 1;
+	end if;
+
+	if i_column = 'high' THEN
+		select _min_date, date
+		into _tt_response
+			from stock_prices
+			where company = i_company and date > _min_date and abs(high - _stock_price_row.high) > i_value
+		order by date
+		limit 1;
+	end if;
+
+	return _tt_response; 
+end;
+$function$
+;

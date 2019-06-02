@@ -14,15 +14,15 @@ TRADE_URL = 'https://www.nasdaq.com/symbol/{}/insider-trades?page={}'
 LIMIT_PAGE = 10
 START_PAGE = 1
 SLEEP_SEC = 0.01
+MAX_ERR_COUNT = 500
 
 
-def createParser():
+def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', type=int, default=2)
-    parser.add_argument('-f', '--file', default='tickers.txt')
+    parser.add_argument('-f', '--file', type=str, default='tickers.txt')
 
     return parser
-
 
 
 def history_fill(service):
@@ -40,8 +40,7 @@ def history_fill(service):
         for td in tr.find_all('td'):
             str_list.append(td.get_text().strip())
 
-        model = base.StockPricesModel(**formater.stock_prices(service, str_list))
-        model.save()
+        base.StockPricesModel(**formater.stock_prices(service, str_list)).save()
 
 
 def trade_fill_page(service, page):
@@ -50,6 +49,7 @@ def trade_fill_page(service, page):
 
     tbody = bs.find('div', {'class': 'genTable'}).table.find_all('tr')
     tbody.pop(0)
+
     for tr in tbody:
         str_list = []
         for td in tr.find_all('td'):
@@ -59,6 +59,7 @@ def trade_fill_page(service, page):
                 str_list.append(td.a.get_text().strip())
 
         insider_data = formater.insiders(service, str_list)
+
         with data_lock:
             insider = base.InsidersModel.get_or_none(
                 *(base.InsidersModel.company == service, base.InsidersModel.name == insider_data['name'])
@@ -67,14 +68,11 @@ def trade_fill_page(service, page):
                 insider = base.InsidersModel(**insider_data)
                 insider.save()
 
-        trades = base.TradesModel(**formater.trades(insider, str_list))
-        trades.save()
+        base.TradesModel(**formater.trades(insider, str_list)).save()
 
 
 def trade_fill(service):
-    max_page = START_PAGE
-
-    bs = BeautifulSoup(urllib.request.urlopen(TRADE_URL.format(service.decode(), 1)).read(), 'html.parser')
+    bs = BeautifulSoup(urllib.request.urlopen(TRADE_URL.format(service.decode(), START_PAGE)).read(), 'html.parser')
 
     pages = bs.find(id='pagerContainer')
     if pages is None:
@@ -97,13 +95,14 @@ def trade_fill(service):
 
 
 def delete_data(service):
-    query = base.InsidersModel.delete().where(base.InsidersModel.company == service)
-    query.execute()
-    query = base.StockPricesModel.delete().where(base.StockPricesModel.company == service)
-    query.execute()
+    insider = base.InsidersModel.delete().where(base.InsidersModel.company == service)
+    insider.execute()
+    stock_price = base.StockPricesModel.delete().where(base.StockPricesModel.company == service)
+    stock_price.execute()
 
 
 class ParserThread(threading.Thread):
+
     def __init__(self, queue, lock):
         super().__init__()
         self.queue = queue
@@ -119,8 +118,8 @@ class ParserThread(threading.Thread):
                     quest = self.queue.get_nowait()
                     self.err_count = 0
                 except Empty:
-                    # При 5 секундах бездействия, умираем
-                    if self.err_count == 500:
+                    # При (MAX_ERR_COUNT / 100) секундах бездействия, умираем
+                    if self.err_count == MAX_ERR_COUNT:
                         self.running = False
                     self.err_count += 1
                     time.sleep(SLEEP_SEC)
@@ -132,7 +131,7 @@ class ParserThread(threading.Thread):
 
 
 if __name__ == '__main__':
-    parser = createParser()
+    parser = create_parser()
     arguments = parser.parse_args()
     lock = threading.Lock()
     data_lock = threading.Lock()
@@ -145,6 +144,8 @@ if __name__ == '__main__':
             delete_data(company)
             queue.put({'args': (company,), 'method': history_fill})
             queue.put({'args': (company,), 'method': trade_fill})
+
+    arguments.n = arguments.n if arguments.n > 0 else 1
 
     for _ in range(arguments.n):
         worker = ParserThread(queue, lock)
